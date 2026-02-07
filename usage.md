@@ -692,6 +692,47 @@ With this configuration:
 | Home LAN device (192.168.10.x) | VPN clients (10.0.0.x) |
 | VPN client | Other VPN clients (if connected simultaneously) |
 
+### Important: Discovery is Mostly One-Way
+
+**Client-initiated discovery often doesn't work** over road warrior VPN due to how broadcast routing works.
+
+When an app on a road warrior client sends a discovery request:
+
+```
+Client app → sends to 255.255.255.255 → stays on local network → never reaches VPN
+```
+
+The address `255.255.255.255` is a "limited broadcast" that by design stays on the local link and is **not routed**, even through WireGuard.
+
+| Broadcast Type | Address | Routed through WireGuard? |
+|----------------|---------|---------------------------|
+| Limited broadcast | 255.255.255.255 | ❌ No — stays local |
+| Directed subnet broadcast | 10.0.0.255 | ⚠️ Maybe — depends on app |
+| Directed LAN broadcast | 192.168.10.255 | ⚠️ Maybe — if in AllowedIPs |
+
+Most discovery apps use `255.255.255.255`, so **discovery requests from road warrior clients won't reach your home network**.
+
+#### What works:
+
+| Direction | Works? | Example |
+|-----------|--------|---------|
+| Home device announces → client receives | ✅ Yes | Server periodically announces its presence |
+| Client requests discovery → home device responds | ❌ Usually no | App sends "who's there?" broadcast |
+
+#### Practical implications:
+
+- **SSDP/UPnP:** Works if the server sends announcements; client-initiated search won't work
+- **HDHomeRun:** Discovery from mobile app won't work; use direct IP or DVR software
+- **Plex/Jellyfin:** Configure server IP directly in the app instead of relying on discovery
+
+#### Workarounds:
+
+1. **Configure server IPs directly** — Most apps allow manual server entry
+2. **Use app-specific remote access features** — Many services (Plex, HDHomeRun) have cloud-based remote access
+3. **Run discovery-aware software on the server** — DVR software, home automation hubs, etc. that already know device IPs
+
+> **Note:** This limitation is specific to road warrior setups. Site-to-site VPN and VLAN relaying work bidirectionally because both sides can receive subnet broadcasts.
+
 ### Combining with VLANs
 
 If your home network uses VLANs, include all VLAN interfaces:
